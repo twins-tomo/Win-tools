@@ -1,0 +1,7 @@
+# ダウンロード・作業ファイル
+*.msi
+extract/
+work_*/
+
+# Chrome Portable 本体のバックアップ (スクリプトの出力)
+Backup/
