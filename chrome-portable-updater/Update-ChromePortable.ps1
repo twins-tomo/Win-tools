@@ -18,6 +18,10 @@
          (失敗したら自動で旧版に戻します)
       6. Data フォルダは最初から最後まで読み書きしません
 
+    Google Chrome Portable が見つからない場合は、インストールは行わず、
+    先に手動でインストールするよう案内を表示して終了します。
+    (このスクリプトはアップデート専用です)
+
     展開の多段構造 (2026-11 時点のインストーラで実地に確認済み):
       ChromeStandaloneSetup64.exe
         └ updater.7z
@@ -71,7 +75,7 @@
           7-Zip は、インストール済みのものがあればそれを使い、
           なければ公式の単体版コンソール (7-Zip Extra) を作業フォルダへ
           自動でダウンロードして使います。
-    Version: 1.1.0
+    Version: 1.2.0
 #>
 [CmdletBinding()]
 param(
@@ -199,6 +203,7 @@ function Expand-With7z {
 # ---------------------------------------------------------------------------
 Write-Step "Google Chrome Portable の場所を確認しています"
 
+$searched = @()
 if (-not $PortableDir) {
     $candidates = @(
         $PSScriptRoot,
@@ -206,14 +211,30 @@ if (-not $PortableDir) {
         (Join-Path $PSScriptRoot 'GoogleChromePortable')
     )
     foreach ($c in $candidates) {
-        if ($c -and (Test-Path -LiteralPath (Join-Path $c 'App\Chrome-bin\chrome.exe'))) {
+        if (-not $c) { continue }
+        $searched += $c
+        if (Test-Path -LiteralPath (Join-Path $c 'App\Chrome-bin\chrome.exe')) {
             $PortableDir = $c
             break
         }
     }
 }
-if (-not $PortableDir) {
-    throw "Google Chrome Portable のフォルダが見つかりません。-PortableDir で GoogleChromePortable.exe のあるフォルダを指定してください。"
+
+if (-not $PortableDir -or -not (Test-Path -LiteralPath (Join-Path $PortableDir 'App\Chrome-bin\chrome.exe'))) {
+    Write-Host ""
+    Write-Host "Google Chrome Portable が見つかりませんでした。" -ForegroundColor Yellow
+    Write-Host "このスクリプトはアップデート専用です。先に手動でインストールしてから、もう一度実行してください。"
+    Write-Host ""
+    Write-Host "  1. PortableApps.com から Google Chrome Portable をインストールする"
+    Write-Host "     https://portableapps.com/apps/internet/google_chrome_portable"
+    Write-Host "  2. インストール先フォルダにこのスクリプトを置くか、-PortableDir でそのフォルダを指定して再実行する"
+    Write-Host ""
+    if ($PortableDir) {
+        Write-Host "指定されたフォルダに App\Chrome-bin\chrome.exe がありません: $PortableDir"
+    } elseif ($searched.Count -gt 0) {
+        Write-Host "探した場所: $($searched -join ' / ')"
+    }
+    return
 }
 $PortableDir = (Resolve-Path -LiteralPath $PortableDir).Path
 
@@ -221,9 +242,6 @@ $chromeBin = Join-Path $PortableDir 'App\Chrome-bin'
 $chromeExe = Join-Path $chromeBin 'chrome.exe'
 $dataDir   = Join-Path $PortableDir 'Data'
 
-if (-not (Test-Path -LiteralPath $chromeExe)) {
-    throw "対象外のフォルダ構成です: $chromeExe がありません。このスクリプトは PortableApps.com 版 (App\Chrome-bin + Data\profile 構成) 専用です。"
-}
 if (-not (Test-Path -LiteralPath $dataDir)) {
     Write-Warning "Data フォルダが見つかりません ($dataDir)。まだ一度も起動していない可能性があります。このままプログラム本体だけ更新します。"
 }
@@ -377,8 +395,8 @@ if (([version]$newVersion -le [version]$currentVersion) -and (-not $Force)) {
 # ---------------------------------------------------------------------------
 # 7. 本体の入れ替え (Data フォルダには触りません)
 # ---------------------------------------------------------------------------
-Write-Step "プログラム本体を入れ替えています (ユーザーデータはそのまま残ります)"
 $backupRoot = Join-Path $PortableDir 'Backup'
+Write-Step "プログラム本体を入れ替えています (ユーザーデータはそのまま残ります)"
 New-Item -ItemType Directory -Path $backupRoot -Force | Out-Null
 $oldBinBackup = Join-Path $backupRoot ("Chrome-bin_{0}_{1}" -f $currentVersion, $stamp)
 
@@ -437,6 +455,6 @@ if ($Launch) {
     if (Test-Path -LiteralPath $launcher) {
         Start-Process -FilePath $launcher
     } else {
-        Start-Process -FilePath $chromeExe
+        Start-Process -FilePath $chromeExe -ArgumentList "--user-data-dir=`"$(Join-Path $dataDir 'profile')`""
     }
 }

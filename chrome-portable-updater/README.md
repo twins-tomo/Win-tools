@@ -44,6 +44,15 @@ ChromeStandaloneSetup64.exe
 
 > なお、企業向け MSI (`googlechromestandaloneenterprise64.msi`) は中身のファイルを持たない自己展開ラッパー形式のため、この用途には使えません。そのため EXE 版を使っています。
 
+## インストールされていない場合
+
+このスクリプトは**アップデート専用**です。Google Chrome Portable が見つからない場合は、インストールは行わず、次の案内を表示して終了します。
+
+- PortableApps.com から手動でインストールすること: https://portableapps.com/apps/internet/google_chrome_portable
+- インストール後、インストール先フォルダにスクリプトを置くか `-PortableDir` で指定して再実行すること
+
+探した場所 (スクリプトのあるフォルダ、その親フォルダ、その直下の `GoogleChromePortable` フォルダ) や、指定されたフォルダに対象がなかった旨もあわせて表示します。
+
 ## 使い方
 
 ### 方法 1: ダブルクリック (おすすめ)
